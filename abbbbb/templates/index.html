@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedMap - Smart Healthcare</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: var(--surface);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        select,
+        input,
+        textarea,
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            width: auto;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        button.danger:hover {
+            background: #dc2626;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .flex {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .flex-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+
+        .col {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .prescribe-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Loader */
+        .loader {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>MedMap Smart Health</h1>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="color" id="theme-color-picker" title="Choose MedMap Theme Color"
+                    style="cursor: pointer; padding: 0; width: 36px; height: 36px; border: none; border-radius: 50%; background: none;">
+                <button id="btn-patient-mode" onclick="switchMode('patient')">Patient View</button>
+                <button id="btn-doctor-mode" onclick="switchMode('doctor')">Doctor View</button>
+                <button id="btn-meddb-mode" onclick="switchMode('meddb')">Medical DB</button>
+                <button class="danger" onclick="deleteDatabase()">Reset DB</button>
+            </div>
+        </header>
+
+        <!-- ROLES SELECTION -->
+        <div id="role-selection" class="card">
+            <h2>Welcome to MedMap</h2>
+            <p>Please select your view from the top right menu to continue.</p>
+        </div>
+
+        <!-- PATIENT VIEW -->
+        <div id="patient-view" class="hidden">
+            <div class="card">
+                <h2>Patient Dashboard</h2>
+                <div class="flex">
+                    <div class="col">
+                        <label>Patient Identity:</label>
+                        <input type="text" id="patient-name" list="patient-list" placeholder="Enter patient name">
+                        <datalist id="patient-list"></datalist>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3>What is your problem?</h3>
+                    <textarea id="symptoms-input"
+                        placeholder="e.g., I have a severe headache, slight fever, and nausea since yesterday morning..."></textarea>
+                    <div class="flex">
+                        <button onclick="submitSymptoms()">Ask AI</button>
+                        <span id="ai-loader" class="loader hidden"></span>
+                    </div>
+                </div>
+
+                <div id="ai-response-area" class="hidden"
+                    style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    <h3>AI Analysis Result</h3>
+                    <p><strong>Predicted Situation:</strong> <span class="tag" id="ai-situation-text"></span></p>
+                    <h4>Suggested Doctors for you:</h4>
+                    <ul id="suggested-doctors-list"></ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>My Prescriptions</h3>
+                <button onclick="loadMyPrescriptions()">Refresh Prescriptions</button>
+                <div style="overflow-x: auto;">
+                    <table id="my-prescriptions-table">
+                        <thead>
+                            <tr>
+                                <th>Doctor</th>
+                                <th>Condition</th>
+                                <th>Medicine</th>
+                                <th>Form</th>
+                                <th>Freq</th>
+                                <th>Days</th>
+                                <th>Confidence</th>
+                                <th>Report & Notes</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCTOR VIEW -->
+        <div id="doctor-view" class="hidden">
+            <div class="card flex">
+                <div class="col">
+                    <label>Doctor Identity:</label>
+                    <input type="text" id="doctor-name" list="doctor-list" placeholder="Enter doctor name">
+                    <datalist id="doctor-list"></datalist>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Extract & Map Prescription</h3>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">Upload an image (JPG/PNG),
+                    PDF, or paste raw text. AI will extract Brand, Variant, Form, Frequency, and Duration—then
+                    accurately fetch the true Strength and Generic Name from your internal database.</p>
+
+                <div class="flex-wrap" style="align-items: flex-start;">
+                    <!-- Raw Text Paste -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <label style="font-weight: 500;">Raw Prescription Text:</label>
+                        <textarea id="presc-raw-text" rows="4"
+                            style="margin-top: 0.5rem; width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem;"
+                            placeholder="e.g., Amoxiclav 625 Tab BD x 5 days (with spelling mistakes or extra notes)"></textarea>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <label style="font-weight: 500; display: block; margin-bottom: 0.5rem;">OR Upload
+                            Document:</label>
+                        <input type="file" id="global-presc-file-upload" accept="image/*,.pdf"
+                            style="margin: 0; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div class="flex" style="margin-top: 1rem;">
+                    <button class="primary" onclick="processGlobalPrescription()">Extract & Map to Database</button>
+                    <span id="presc-loader" class="loader hidden"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Pending Consultations</h3>
+                <button onclick="loadConsultations()">Refresh Patients</button>
+                <table id="consultations-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Symptoms</th>
+                            <th>AI Situation</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- AI Analysis Inline Box -->
+            <div id="inline-ai-analysis" class="card hidden" style="background-color: #f0fdf4; border-color: #bbf7d0;">
+                <h3 style="color: #166534;">AI Cause & Alternatives</h3>
+                <div id="inline-ai-content" style="font-size: 0.95rem; line-height: 1.5;"></div>
+                <button onclick="document.getElementById('inline-ai-analysis').classList.add('hidden')"
+                    style="margin-top: 1rem; background: var(--text-light);">Close</button>
+            </div>
+
+            <!-- Prescription Form area -->
+            <div id="prescription-area" class="card hidden">
+                <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 id="prescribe-title" style="margin: 0;">Write Prescription</h3>
+                    <button class="primary" onclick="autoFillPrescription()"
+                        style="background-color: var(--primary); padding: 0.5rem 1rem;">Auto-fill from DB ✨</button>
+                </div>
+
+                <input type="hidden" id="presc-cid">
+
+                <p style="font-size: 0.85rem; color: var(--text-light);">Extract details manually by filling out the
+                    form or parsing a new prescription globally above.</p>
+            </div>
+
+            <input type="hidden" id="presc-cid">
+
+            <div class="flex-wrap">
+                <div class="col"><label>Form (Tablet, Syrup)</label><input type="text" id="presc-form"></div>
+                <div class="col"><label>Frequency (e.g., 2 times/day)</label><input type="text" id="presc-freq">
+                </div>
+                <div class="col"><label>Duration (Days)</label><input type="number" id="presc-days"></div>
+                <div class="col"><label>Generic Name</label><input type="text" id="presc-generic"></div>
+                <div class="col"><label>Strength (e.g., 500mg)</label><input type="text" id="presc-strength"></div>
+                <div class="col"><label>Similarity (%)</label><input type="number" step="0.1" id="presc-similarity">
+                </div>
+                <div class="col"><label>Confidence</label><input type="text" id="presc-confidence"></div>
+            </div>
+
+            <div class="col" style="margin: 1rem 0;">
+                <label>Doctor's Additional Notes (Given directly to patient):</label>
+                <textarea id="presc-notes" rows="3"
+                    style="width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem;"
+                    placeholder="Write specific directions or notes on alternatives here..."></textarea>
+            </div>
+
+            <button class="primary" onclick="submitPrescription()">Submit Prescription</button>
+            <button class="danger" onclick="hidePrescriptionForm()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- MEDICAL DB VIEW -->
+    <div id="meddb-view" class="hidden">
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>Add Medicine via JSON or Document (PDF/Image)</h2>
+            <div class="flex-wrap" style="align-items: flex-start; gap: 2rem;">
+
+                <!-- Manual JSON Add -->
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Manual JSON Add</h4>
+                    <textarea id="meds-json-input" rows="12"
+                        style="width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-family: monospace;"
+                        placeholder='{
+  "medicines_list": [
+    {
+      "disease_type": "Bacterial Infection",
+      "id": "MED021",
+      "brand_name": "Amoxiclav 625",
+      "generic_name": "Amoxicillin + Clavulanic Acid",
+      "strength": "500mg + 125mg",
+      "form": "Tablet",
+      "similarity_percentage": 97.4,
+      "confidence": "High",
+      "description": {
+        "how_to_use": "Take one tablet every 12 hours after meals.",
+        "advantages": "Treats bacterial infections quickly. Reduces fever.",
+        "disadvantages": "May cause nausea. Do not take on empty stomach."
+      }
+    }
+  ]
+}'></textarea>
+                    <button onclick="addMedicineJson()" style="margin-top: 0.5rem;">Add Medicine to DB</button>
+                </div>
+
+                <!-- File AI Extract -->
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Extract from Document</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem;">Upload a PDF or
+                        Image. AI will extract it into the JSON format for you to review and add.</p>
+                    <input type="file" id="meds-file-upload" accept="image/*,.pdf"
+                        style="margin: 0; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; width: 100%;">
+                    <button onclick="extractMedicineFile()" style="margin-top: 0.5rem;">Extract to JSON</button>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Medical Database Inventory</h2>
+            <div class="flex" style="justify-content: space-between; align-items: center;">
+                <p>Total Medicines Tracked: <strong id="total-medicines-count">0</strong></p>
+                <button onclick="loadMedicines()">Refresh DB</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="medicines-table">
+                    <thead>
+                        <tr>
+                            <th>Unique Med ID</th>
+                            <th>Target Disease</th>
+                            <th>Brand Name</th>
+                            <th>Generic Name</th>
+                            <th>Form</th>
+                            <th>Strength</th>
+                            <th>Similarity</th>
+                            <th>Confidence</th>
+                            <th>Times Prescribed</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        async function fetchData(url, errorMsg) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(res.statusText);
+                return await res.json();
+            } catch (err) {
+                console.error(errorMsg, err);
+                return [];
+            }
+        }
+
+        async function postData(url, data) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return { error: 'Network Error' };
+            }
+        }
+
+        /* DYNAMIC THEMES LOGIC */
+        function initTheme() {
+            const savedColor = localStorage.getItem('medmap-theme-color');
+            const picker = document.getElementById('theme-color-picker');
+
+            if (savedColor) {
+                applyThemeColor(savedColor);
+                if (picker) picker.value = savedColor;
+            } else {
+                if (picker) picker.value = "#4f46e5"; // Default primary
+            }
+
+            // Listen for user picking a color
+            if (picker) {
+                picker.addEventListener('input', (event) => {
+                    const newColor = event.target.value;
+                    applyThemeColor(newColor);
+                    localStorage.setItem('medmap-theme-color', newColor);
+                });
+            }
+        }
+
+        function applyThemeColor(hex) {
+            // Set base color
+            document.documentElement.style.setProperty('--primary', hex);
+
+            // Calculate a darker hover color natively (roughly 15% darker for typical hover states)
+            let r = parseInt(hex.substring(1, 3), 16);
+            let g = parseInt(hex.substring(3, 5), 16);
+            let b = parseInt(hex.substring(5, 7), 16);
+            r = Math.floor(r * 0.85);
+            g = Math.floor(g * 0.85);
+            b = Math.floor(b * 0.85);
+            const darkerHex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+
+            document.documentElement.style.setProperty('--primary-hover', darkerHex);
+        }
+
+        /* INITIALIZATION */
+        window.onload = async () => {
+            initTheme();
+            await loadUsers();
+            switchMode('doctor'); // Default to Doctor View after loading users
+        };
+
+        async function loadUsers() {
+            const patients = await fetchData(`${API_BASE}/patients`, "Failed loading patients");
+            const pList = document.getElementById('patient-list');
+            pList.innerHTML = patients.map(p => `<option value="${p.name}">`).join('');
+
+            const doctors = await fetchData(`${API_BASE}/doctors`, "Failed loading doctors");
+            const dList = document.getElementById('doctor-list');
+            dList.innerHTML = doctors.map(d => `<option value="${d.name}">`).join('');
+        }
+
+        function switchMode(mode) {
+            document.getElementById('role-selection').classList.add('hidden');
+            document.getElementById('patient-view').classList.add('hidden');
+            document.getElementById('doctor-view').classList.add('hidden');
+            document.getElementById('meddb-view').classList.add('hidden');
+
+            document.getElementById('btn-patient-mode').style.opacity = '0.5';
+            document.getElementById('btn-doctor-mode').style.opacity = '0.5';
+            document.getElementById('btn-meddb-mode').style.opacity = '0.5';
+
+            if (mode === 'patient') {
+                document.getElementById('patient-view').classList.remove('hidden');
+                document.getElementById('btn-patient-mode').style.opacity = '1';
+                loadMyPrescriptions();
+            } else if (mode === 'doctor') {
+                document.getElementById('doctor-view').classList.remove('hidden');
+                document.getElementById('btn-doctor-mode').style.opacity = '1';
+                loadConsultations();
+            } else if (mode === 'meddb') {
+                document.getElementById('meddb-view').classList.remove('hidden');
+                document.getElementById('btn-meddb-mode').style.opacity = '1';
+                loadMedicines();
+            }
+        }
+
+        async function loadMedicines() {
+            const meds = await fetchData(`${API_BASE}/medicines`, "Failed loading medicines");
+            document.getElementById('total-medicines-count').innerText = meds.length;
+            const tbody = document.querySelector('#medicines-table tbody');
+            if (meds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9">No medicines tracked yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = meds.map(m => `
+                <tr>
+                    <td><strong>${m.mid}</strong></td>
+                    <td>${m.disease || 'N/A'}</td>
+                    <td>${m.brand_name || 'N/A'}</td>
+                    <td>${m.generic_name}</td>
+                    <td>${m.form}</td>
+                    <td>${m.strength}</td>
+                    <td>${m.similarity_percentage || 0}%</td>
+                    <td>${m.confidence || 'N/A'}</td>
+                    <td>${m.count}</td>
+                    <td>${(() => {
+                    if (!m.description) return 'N/A';
+                    try {
+                        const d = JSON.parse(m.description);
+                        return `<strong>Use:</strong> ${d.how_to_use || 'N/A'}<br><strong style="color:green;">Pros:</strong> ${d.advantages || 'N/A'}<br><strong style="color:red;">Cons:</strong> ${d.disadvantages || 'N/A'}`;
+                    } catch (e) { return m.description; }
+                })()}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function addMedicineJson() {
+            const rawJson = document.getElementById('meds-json-input').value;
+            if (!rawJson.trim()) return alert("Please enter JSON first.");
+
+            try {
+                const parsed = JSON.parse(rawJson);
+                const res = await postData(`${API_BASE}/medicines/add`, parsed);
+                if (res.error) {
+                    alert("Error: " + res.error);
+                } else {
+                    alert("Medicine successfully added to DB!");
+                    document.getElementById('meds-json-input').value = "";
+                    loadMedicines(); // Refresh UI
+                }
+            } catch (e) {
+                alert("Invalid JSON format. Please ensure it is valid JSON.");
+            }
+        }
+
+        async function extractMedicineFile() {
+            const fileInput = document.getElementById('meds-file-upload');
+            if (!fileInput.files.length) return alert('Please select a file to extract first.');
+
+            alert("Extracting text via AI... Please wait. This may take a minute for multiple medicines.");
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                // 1. Send file to AI for extraction
+                const res = await fetch(`${API_BASE}/medicines/extract`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else if (data.medicines_list) {
+                    // 2. Put the array in the text box for user to see
+                    document.getElementById('meds-json-input').value = JSON.stringify(data, null, 2);
+
+                    // 3. Automatically pipeline it to the DB insertion route
+                    alert("Extraction successful. Automatically adding to database...");
+                    const addRes = await postData(`${API_BASE}/medicines/add`, data);
+
+                    if (addRes.error) {
+                        alert("Error Bulk-Adding to DB: " + addRes.error);
+                    } else {
+                        alert(addRes.message + "\n\nAll medicines have been successfully imported!");
+                        document.getElementById('meds-json-input').value = "";
+                        fileInput.value = '';
+                        loadMedicines(); // Refresh UI
+                    }
+                } else {
+                    alert("Extraction failed. AI did not return a valid 'medicines_list'. Check the source file.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to parse file.');
+            }
+        }
+
+        /* PATIENT FUNCTIONS */
+        async function submitSymptoms() {
+            const patientName = document.getElementById('patient-name').value;
+            const sym = document.getElementById('symptoms-input').value;
+            if (!patientName || !sym) return alert('Please enter patient name and type symptoms.');
+
+            document.getElementById('ai-loader').classList.remove('hidden');
+            document.getElementById('ai-response-area').classList.add('hidden');
+
+            const res = await postData(`${API_BASE}/patient/ask`, { patient_name: patientName, symptoms: sym });
+
+            document.getElementById('ai-loader').classList.add('hidden');
+
+            if (res.error) {
+                alert("Error: " + res.error);
+            } else {
+                document.getElementById('ai-response-area').classList.remove('hidden');
+                document.getElementById('ai-situation-text').innerText = res.situation;
+
+                const docList = document.getElementById('suggested-doctors-list');
+                docList.innerHTML = res.suggested_doctors.map(d => `<li><strong>${d.name}</strong> - ${d.specialization}</li>`).join('');
+            }
+        }
+
+        async function loadMyPrescriptions() {
+            const patientName = document.getElementById('patient-name').value;
+            if (!patientName) return;
+
+            const pList = await fetchData(`${API_BASE}/prescriptions/patient/${encodeURIComponent(patientName)}`, "Failed to load prescriptions");
+            const tbody = document.querySelector('#my-prescriptions-table tbody');
+
+            if (pList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">No prescriptions yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = pList.map(p => {
+                let aiHtml = '';
+                try {
+                    let r = JSON.parse(p.ai_report);
+                    aiHtml = `
+                        <div style="font-size: 0.85em;">
+                            <strong>Quantity:</strong> <span style="color: blue; font-weight: bold;">${r.total_quantity}</span><br>
+                            <strong>Report:</strong> ${r.report}<br>
+                            <strong style="color: green;">Advantages:</strong> ${r.advantages}<br>
+                            <strong style="color: red;">Disadvantages:</strong> ${r.disadvantages}<br>
+                            <strong>Instructions:</strong> ${r.instructions}
+                        </div>
+                    `;
+                } catch (e) { aiHtml = p.ai_report; }
+
+                const notesHtml = p.doctor_notes ? `<div style="margin-top:0.5rem; padding:0.4rem; background:#fee2e2; border-radius:4px; font-size:0.85em;"><strong>Doctor's Notes:</strong> ${p.doctor_notes}</div>` : '';
+
+                return `
+                <tr>
+                    <td>${p.doctor_name}</td>
+                    <td><span class="tag">${p.ai_situation}</span></td>
+                    <td><strong>${p.generic_name}</strong> (${p.mid})</td>
+                    <td>${p.form}</td>
+                    <td>${p.frequency}</td>
+                    <td>${p.duration_days} days</td>
+                    <td>${p.confidence}</td>
+                    <td style="max-width: 300px;">${aiHtml}${notesHtml}</td>
+                    <td><button onclick="downloadPrescription('${p.mid}', '${p.generic_name.replace(/'/g, "\\'")}', '${encodeURIComponent(p.ai_report)}', '${encodeURIComponent(p.doctor_notes || '')}')">Download</button></td>
+                </tr>
+            `}).join('');
+        }
+
+        function downloadPrescription(medId, medName, encodedReport, encodedNotes) {
+            let reportText = "";
+            let notesText = decodeURIComponent(encodedNotes);
+
+            try {
+                let r = JSON.parse(decodeURIComponent(encodedReport));
+                reportText = `MEDICATION ID: ${medId}\nMEDICINE: ${medName}\nTOTAL QUANTITY: ${r.total_quantity}\n\nREPORT:\n${r.report}\n\nADVANTAGES:\n${r.advantages}\n\nDISADVANTAGES:\n${r.disadvantages}\n\nINSTRUCTIONS:\n${r.instructions}`;
+            } catch (e) {
+                reportText = decodeURIComponent(encodedReport);
+            }
+
+            const fullText = notesText ? `${reportText}\n\n--- DOCTOR'S NOTES & ALTERNATIVES ---\n${notesText}` : reportText;
+
+            // Simple approach to generate a clean printable window
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write(`<pre style="font-family: Arial; padding: 2rem; white-space: pre-wrap;">${fullText}</pre>`);
+            printWindow.document.write('<script>window.print();window.close();<\/script>');
+            printWindow.document.close();
+        }
+
+        /* DOCTOR FUNCTIONS */
+        async function loadConsultations() {
+            const consults = await fetchData(`${API_BASE}/consultations`, "Failed load cons.");
+            const tbody = document.querySelector('#consultations-table tbody');
+
+            if (consults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No pending patients.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = consults.map(c => `
+            <tr>
+                <td>${new Date(c.timestamp).toLocaleString()}</td>
+                <td>${c.patient_name}</td>
+                <td>${c.symptoms}</td>
+                <td><span class="tag">${c.ai_situation}</span></td>
+                <td>${c.has_prescription ? '✅ Prescribed' : '⏳ Pending'}</td>
+                <td>
+                    <button class="prescribe-btn" onclick="openPrescriptionForm(${c.cid}, '${c.patient_name}', '${c.ai_situation}')">
+                        ${c.has_prescription ? 'Add Another' : 'Prescribe'}
+                    </button>
+                    <button class="prescribe-btn" style="background-color: #8b5cf6;" onclick="analyzeCause('${c.symptoms.replace(/'/g, "\\'")}')">
+                        AI Cause & Alt
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        }
+
+        function openPrescriptionForm(cid, patientName, situation) {
+            document.getElementById('prescription-area').classList.remove('hidden');
+            document.getElementById('prescribe-title').innerText = `Write Prescription for ${patientName} (${situation})`;
+            document.getElementById('presc-cid').value = cid;
+            // Clear form fields
+            document.getElementById('presc-form').value = '';
+            document.getElementById('presc-freq').value = '';
+            document.getElementById('presc-days').value = '';
+            document.getElementById('presc-generic').value = '';
+            document.getElementById('presc-strength').value = '';
+            document.getElementById('presc-similarity').value = '';
+            document.getElementById('presc-confidence').value = '';
+            document.getElementById('presc-notes').value = '';
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        async function autoFillPrescription() {
+            const cid = document.getElementById('presc-cid').value;
+            if (!cid) return;
+
+            alert("Searching Medical Database & performing AI Safety Check... Please wait.");
+            const res = await postData(`${API_BASE}/doctor/auto_fill`, { cid: parseInt(cid) });
+
+            if (res.error) {
+                if (res.ai_rejected) {
+                    const notesBox = document.getElementById('presc-notes');
+                    notesBox.value = `[⚠️ AI Safety Override: Auto-Fill Terminated. Reason: ${res.error}]\n\n` + notesBox.value;
+                    alert("⚠️ AUTO-FILL BLOCKED BY AI ⚠️\n\n" + res.error + "\n\nPlease manually prescribe a safer alternative. The AI's warning has been saved to the Doctor's Notes.");
+                } else {
+                    alert("Error: " + res.error);
+                }
+                return;
+            }
+
+            // Populate form
+            document.getElementById('presc-generic').value = res.generic_name || '';
+            document.getElementById('presc-strength').value = res.strength || '';
+            document.getElementById('presc-form').value = res.form || '';
+            document.getElementById('presc-freq').value = res.suggested_frequency || '';
+            document.getElementById('presc-days').value = res.suggested_duration_days || '';
+            document.getElementById('presc-similarity').value = res.similarity_percentage || 0;
+            document.getElementById('presc-confidence').value = res.confidence || 'Unknown';
+
+            // Format Description into Doctor's Notes
+            let notesString = "";
+            if (res.verification_note) {
+                notesString += `[${res.verification_note}]\n\n`;
+            }
+
+            if (res.description) {
+                try {
+                    let desc = JSON.parse(res.description);
+                    if (desc.how_to_use) notesString += `How to use: ${desc.how_to_use}\n\n`;
+                    if (desc.advantages) notesString += `Advantages:\n${desc.advantages}\n\n`;
+                    if (desc.disadvantages) notesString += `Disadvantages:\n${desc.disadvantages}`;
+                    document.getElementById('presc-notes').value = notesString;
+                } catch (e) {
+                    // Raw string
+                    document.getElementById('presc-notes').value = notesString + res.description;
+                }
+            } else {
+                document.getElementById('presc-notes').value = notesString + "No description available in Medical DB.";
+            }
+
+            // Explicitly track Medicine ID and Name
+            const finalId = res.mid ? res.mid : 'Unknown ID';
+            const logString = `[MedMap Global Database Match - ID: ${finalId} | ${res.generic_name}]\n\n`;
+            document.getElementById('presc-notes').value = logString + document.getElementById('presc-notes').value;
+
+            alert("Prescription Auto-Filled successfully!");
+        }
+
+        function hidePrescriptionForm() {
+            document.getElementById('prescription-area').classList.add('hidden');
+        }
+
+        async function submitPrescription() {
+            const docInput = document.getElementById('doctor-name');
+            const docName = docInput.value.trim();
+            if (!docName) return alert('Please enter your Doctor Identity at the top.');
+
+            const data = {
+                cid: document.getElementById('presc-cid').value,
+                doctor_name: docName,
+                form: document.getElementById('presc-form').value,
+                frequency: document.getElementById('presc-freq').value,
+                duration_days: document.getElementById('presc-days').value,
+                generic_name: document.getElementById('presc-generic').value,
+                strength: document.getElementById('presc-strength').value,
+                similarity: document.getElementById('presc-similarity').value,
+                confidence: document.getElementById('presc-confidence').value,
+                doctor_notes: document.getElementById('presc-notes').value
+            };
+
+            const res = await postData(`${API_BASE}/doctor/prescribe`, data);
+            if (res.error) {
+                alert('Error: ' + res.error);
+            } else {
+                alert('Prescription added successfully!');
+                hidePrescriptionForm();
+                loadConsultations(); // refresh list
+            }
+        }
+
+        async function processGlobalPrescription() {
+            const fileInput = document.getElementById('global-presc-file-upload');
+            const rawText = document.getElementById('presc-raw-text').value.trim();
+            const loader = document.getElementById('presc-loader');
+
+            if (!fileInput.files.length && !rawText) {
+                return alert('Please upload a file OR paste raw prescription text.');
+            }
+
+            loader.classList.remove('hidden');
+            const formData = new FormData();
+
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+            if (rawText) {
+                formData.append('raw_text', rawText);
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/doctor/parse_prescription_file`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else if (data.extracted_medicines && data.extracted_medicines.length > 0) {
+                    const med = data.extracted_medicines[0];
+                    const std = med.structured_data || {};
+                    const dbm = med.matched_medicine || {};
+
+                    // Ensure Document is visible and scroll to it
+                    document.getElementById('prescription-area').classList.remove('hidden');
+                    window.scrollTo({ top: document.getElementById('prescription-area').offsetTop, behavior: 'smooth' });
+
+                    // Map fields cautiously without assuming Strength
+                    document.getElementById('presc-generic').value = std.brand_name || dbm.generic_name || '';
+                    document.getElementById('presc-form').value = std.form || dbm.form || '';
+                    document.getElementById('presc-strength').value = dbm.strength || '[Verify DB mapped strength]';
+                    document.getElementById('presc-freq').value = std.frequency_per_day ? `${std.frequency_per_day} times/day` : '';
+                    document.getElementById('presc-days').value = std.duration_days || '';
+
+                    let mappingLog = `[AI Auto-Extracted]\nRaw Input: ${med.raw_input || rawText}\n`;
+                    if (std.brand_variant) mappingLog += `Brand Variant: ${std.brand_variant} (NOTE: Extracted variant mapped to True DB Strength above)\n`;
+                    if (std.disease_cause) mappingLog += `Identified Cause: ${std.disease_cause}\n`;
+                    if (dbm.disease_type) mappingLog += `Mapped DB Disease: ${dbm.disease_type}\n`;
+                    if (dbm.id) mappingLog += `DB Match ID: ${dbm.id}\n`;
+
+                    document.getElementById('presc-notes').value = mappingLog + "\n" + document.getElementById('presc-notes').value;
+
+                    alert("Success! Form auto-filled. AI safely separated Variant mapping to True DB Strength. Review before submitting.");
+
+                    // Clear inputs after success
+                    fileInput.value = '';
+                    document.getElementById('presc-raw-text').value = '';
+                } else {
+                    alert("AI failed to extract structured medicines from the input.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to process prescription.');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        async function analyzeCause(symptoms) {
+            const analysisBox = document.getElementById('inline-ai-analysis');
+            const analysisContent = document.getElementById('inline-ai-content');
+
+            analysisBox.classList.remove('hidden');
+            analysisContent.innerHTML = "<em>Analyzing causes and generating alternatives... Please wait.</em>";
+
+            const res = await postData(`${API_BASE}/doctor/analyze_cause`, { symptoms });
+            if (res.error) {
+                analysisContent.innerHTML = `<span style="color: red;">Error: ${res.error}</span>`;
+            } else {
+                analysisContent.innerHTML = `
+                    <strong>Most Likely Cause:</strong><br> ${res.cause}<br><br>
+                    <strong>Recommended Alternatives / Home Remedies:</strong><br> ${res.alternatives}
+                    <br><br><em style="color: var(--text-light); font-size: 0.8rem;">(The alternatives have been automatically copied to your Doctor's Notes below)</em>
+                `;
+
+                // Auto-copy alternatives to Prescription Notes block
+                const notes = document.getElementById('presc-notes');
+                if (notes) {
+                    notes.value += `\n\n[AI Analyze & Suggestions]\nCause: ${res.cause}\nAlternatives & Tablets: ${res.alternatives}\n\n`;
+                }
+            }
+        }
+
+        // Removed uploadPDF natively as it's replaced globally by the AI extraction framework
+
+        /* GLOBAL ADMIN */
+        async function deleteDatabase() {
+            if (confirm("Are you sure you want to delete and reset the entire database?")) {
+                const res = await postData(`${API_BASE}/db/delete`, {});
+                alert(res.message || "Database resetting...");
+                location.reload();
+            }
+        }
+    </script>
+
+</body>
+
+</html>
